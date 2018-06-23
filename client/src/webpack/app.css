@@ -1,0 +1,74 @@
+body {
+    font-size: 1em;
+    font-family: "PT Sans", sans-serif;
+    background-color: white;
+}
+ul {
+    list-style-type: none;
+}
+.hidden {
+    display: none;
+}
+#root {
+    margin-top: 3vh;
+}
+#left-pane {
+    border-right: solid lightgrey 1px;
+    padding: 10px;
+}
+#pid-input {
+    margin: 0 0.5em 2em 0;
+}
+#prev-next-buttons {
+    margin: 1em 0 1em 0;
+}
+#right-pane {
+    padding: 10px;
+}
+.radiology {
+    color: steelblue;
+    margin: 1em;
+    min-height: 2em;
+    cursor: pointer;
+    transition:color .2s ease-in-out;
+}
+.radiology:hover {
+    color:orange;
+}
+.radiology > .selected {
+    color: orange;
+}
+#right-pane-vertical-separator {
+    margin: 1vh 0 1vh 0;
+}
+#radiology-info > ul > li > span {
+    font-weight: bold;
+}
+.feature-selector {
+    cursor: pointer;
+    color: black;
+    font-weight: bold;
+    transition: color .2s ease-in-out;
+    border-radius: 20px;
+}
+.feature-selector:hover, .feature-selector.selected {
+    color: orange;
+}
+#create-delete-buttons {
+    margin: 1.5em 0 1em 0;
+}
+.features {
+    margin: 1.5em 0 1em 0;
+}
+.feature {
+    cursor: pointer;
+    margin-top: 1em;
+    padding-top: 0.7em;
+}
+.row.feature.selected {
+    border-radius: 20px;
+    background-color: lightcyan;
+}
+.edit-feature {
+    margin: 1em 0 1em 0;
+}

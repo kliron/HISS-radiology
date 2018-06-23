@@ -1,0 +1,15 @@
+*.db
+*.sqlite
+*.sqlite3
+*.csv
+.gradle
+.idea
+.vscode
+.settings
+build
+lib
+node_modules
+static
+gradle
+gradlew
+*.bat
