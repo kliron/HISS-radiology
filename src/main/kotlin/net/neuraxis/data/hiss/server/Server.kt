@@ -14,7 +14,7 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import net.neuraxis.data.hiss.model.*
 
-data class SaveResult(val error: Boolean, val data: Map<String, Any>)
+data class SaveResult(val error: Boolean, val data: Map<String, Any>?, val id: Long?)
 
 @Suppress("Unused")
 fun Application.main() {
@@ -26,6 +26,7 @@ fun Application.main() {
             registerModule(JavaTimeModule())
         }
     }
+
     install(Routing) {
         /**
          * Find
@@ -82,12 +83,12 @@ fun Application.main() {
             }
             val validation = received.validate()
             if (!validation.isValid) {
-                call.respond(SaveResult(true, validation.msg))
+                call.respond(SaveResult(true, validation.msg, null))
                 return@post
             }
 
-            val rowid = received.insert()
-            call.respond(SaveResult(false, mapOf("rowid" to rowid)))
+            val id = received.insert()
+            call.respond(SaveResult(false, null, id))
         }
         /**
          * Update
@@ -105,28 +106,28 @@ fun Application.main() {
             }
             val validation = received.validate()
             if (!validation.isValid) {
-                call.respond(SaveResult(true, validation.msg))
+                call.respond(SaveResult(true, validation.msg, null))
                 return@put
             }
-            val rowid = received.update()
-            call.respond(SaveResult(false, mapOf("rowid" to rowid)))
+            val id = received.update()
+            call.respond(SaveResult(false, null, id))
         }
         /**
          * Delete
          */
-        delete("/features/{feature}/{rowid}") {
-            val rowid = call.parameters["rowid"]!!.toLong()
+        delete("/features/{feature}/{id}") {
+            val id = call.parameters["id"]!!.toLong()
             val feature = call.parameters["feature"]!!.toString()
             val deletedId = when (feature) {
-                "stroke" -> StrokeFeature.delete(rowid)
-                "angio" -> AngioFeature.delete(rowid)
-                "degenerative" -> DegenerativeFeature.delete(rowid)
+                "stroke" -> StrokeFeature.delete(id)
+                "angio" -> AngioFeature.delete(id)
+                "degenerative" -> DegenerativeFeature.delete(id)
                 else -> {
                     call.respond(HttpStatusCode.BadRequest, mapOf("error" to true, "msg" to "`$feature` is not a valid 'feature' path segment"))
                     return@delete
                 }
             }
-            call.respond(SaveResult(false, mapOf("rowid" to deletedId)))
+            call.respond(SaveResult(false, null, deletedId))
         }
         /**
          * Serve static assets

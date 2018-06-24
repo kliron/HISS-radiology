@@ -2,158 +2,26 @@ package net.neuraxis.data.hiss.model
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
-import java.sql.*
 import io.ktor.locations.*
+import net.neuraxis.data.hiss.service.DatabaseFactory
 
-const val connectionString = "jdbc:sqlite:database.db"
-
-val Kind = listOf(
-        "nothing",
-        "subarachnoidal hemorrhage",
-        "hemorrhage",
-        "hemorrhagic transformation",
-        "infarct",
-        "unspecified",
-        "NA"
-)
-
-val Temporal = listOf(
-        "acute",
-        "subacute",
-        "chronic",
-        "unspecified",
-        "NA"
-)
-
-val Locations = listOf(
-        "MCA territory",
-        "ACA territory",
-        "PCA territory",
-        "frontal",
-        "temporal",
-        "parietal",
-        "insular",
-        "occipital",
-        "fronto-temporal",
-        "fronto-parietal",
-        "temporo-parietal",
-        "temporo-occipital",
-        "parieto-occipital",
-        "capsula interna anterior limb",
-        "capsula interna posterior limb",
-        "corona radiata",
-        "thalamus",
-        "nucleus caudatus",
-        "putamen",
-        "globus pallidus",
-        "basal ganglia",
-        "mesencephalon",
-        "pons",
-        "medulla oblongata",
-        "brainstem unspecified",
-        "cerebellum",
-        "unspecified",
-        "NA"
-)
-
-val Side = listOf(
-        "left",
-        "right",
-        "bilateral",
-        "unspecified",
-        "NA"
-)
-
-val Extent = listOf(
-        "small",
-        "small, multiple",
-        "medium",
-        "medium, multiple",
-        "large",
-        "large, multiple",
-        "unspecified",
-        "unspecified, multiple",
-        "NA"
-)
-
-val Grade = listOf(
-        "none",
-        "light",
-        "moderate",
-        "severe",
-        "unspecified",
-        "NA"
-)
-
-val Vessels = listOf(
-        "Aorta",
-        "ICA",
-        "A1",
-        "A2",
-        "A3",
-        "M1",
-        "M2",
-        "M3",
-        "M4",
-        "P1",
-        "P2",
-        "P3",
-        "Vertebral",
-        "Basilar",
-        "PICA",
-        "AICA",
-        "SCA",
-        "unspecified",
-        "NA"
-)
-
-val VesselFindings = listOf(
-        "nothing",
-        "atheromatosis without stenosis",
-        "stenosis <= 50%",
-        "stenosis < 70%",
-        "stenosis >= 70%",
-        "stenosis, unspecified grade",
-        "caliber variations",
-        "occlusion",
-        "thrombosis",
-        "dense vessel sign",
-        "dissection",
-        "unspecified",
-        "NA"
-)
-
-val CorticalAtrophyDescription = listOf(
-        "symmetric",
-        "right hemisphere predominance",
-        "left hemisphere predominance",
-        "unspecified",
-        "NA"
-)
-
-val Values = hashMapOf(
-        "Kind" to Kind,
-        "Temporal" to Temporal,
-        "Locations" to Locations,
-        "Side" to Side,
-        "Extent" to Extent,
-        "Grade" to Grade,
-        "Vessels" to Vessels,
-        "VesselFinding" to VesselFindings,
-        "CorticalAtrophyDescription" to CorticalAtrophyDescription
-)
+/**
+ * IMPORTANT! HikariCP treats a non-explicit commit when autocommit is false as an application error, so we need
+ * to call commit() even on SELECT operations since those also execute in a transaction.
+ * We set autocommit to false in DatabaseFactory.
+ */
 
 typealias ReportUID = Long
-typealias RowId = Long
+typealias Id = Long
 
 data class Validation(val isValid: Boolean, val msg: Map<String, String>)
 
 interface Feature {
     val report_uid: ReportUID
-    val rowid: RowId
+    val id: Id
     fun validate(): Validation
-    fun insert(): RowId
-    fun update(): RowId
+    fun insert(): Id
+    fun update(): Id
 }
 
 // Jackson mapper is thread safe and sharing a static object is the recommended way to go according to its author.
@@ -182,11 +50,12 @@ data class Radiology(val pid: Long,
 
     companion object {
         fun find(pid: Long?, limit: Long, offset: Long): List<Radiology> {
-            val sql = if (pid == null) "SELECT * FROM radiology ORDER BY ROWID LIMIT ? OFFSET ?"
-                else "SELECT * FROM radiology WHERE pid = ? ORDER BY ROWID LIMIT ? OFFSET ?"
+            val sql = if (pid == null) "SELECT * FROM radiology ORDER BY id LIMIT ? OFFSET ?"
+                else "SELECT * FROM radiology WHERE pid = ? ORDER BY id LIMIT ? OFFSET ?"
 
             val results = mutableListOf<Radiology>()
-            DriverManager.getConnection(connectionString).use {
+
+            DatabaseFactory.getConnection().use {
                 val stmt = it.prepareStatement(sql)
                 if (pid != null) {
                     stmt.setLong(1, pid)
@@ -211,19 +80,22 @@ data class Radiology(val pid: Long,
                                         report_type = rs.getString("report_type"),
                                         report = rs.getString("report")))
                 }
+                it.commit()
             }
             return results
         }
         fun getTotalRowsFor(pid: Long?): Long {
             val sql = if (pid == null) "SELECT COUNT(*) FROM radiology" else "SELECT COUNT(*) FROM radiology WHERE pid = ?"
-            DriverManager.getConnection(connectionString).use {
+            DatabaseFactory.getConnection().use {
                 val stmt = it.prepareStatement(sql)
                 if (pid != null) {
                     stmt.setLong(1, pid)
                 }
                 val rs = stmt.executeQuery()
                 rs.next()
-                return rs.getLong(1)
+                val total = rs.getLong(1)
+                it.commit()
+                return total
             }
         }
         fun findFeaturesFor(report_uid: ReportUID): HashMap<String, List<Feature>> = hashMapOf(
@@ -235,45 +107,45 @@ data class Radiology(val pid: Long,
 }
 
 @Location("/stroke")
-data class StrokeFeature(override val rowid: RowId,
-                         override val report_uid: ReportUID,
+data class StrokeFeature(override val report_uid: ReportUID,
                          val eid: Long,
                          val pid: Long,
                          val kind: String,
                          val temporal: String,
                          val location: String,
                          val side: String,
-                         val extent: String) : Feature, Json {
+                         val extent: String,
+                         override val id: Id) : Feature, Json {
 
     companion object {
         fun find(report_uid: ReportUID): List<StrokeFeature> {
             val results = mutableListOf<StrokeFeature>()
-            DriverManager.getConnection(connectionString).use {
-                val stmt = it.prepareStatement("SELECT ROWID,* FROM stroke_features WHERE report_uid = ?")
+            DatabaseFactory.getConnection().use {
+                val stmt = it.prepareStatement("SELECT * FROM stroke_features WHERE report_uid = ?")
                 stmt.setLong(1, report_uid)
                 val rs = stmt.executeQuery()
                 while (rs.next()) {
-                    results.add(StrokeFeature(rowid = rs.getLong("rowid"),
-                                              report_uid = rs.getLong("report_uid"),
+                    results.add(StrokeFeature(report_uid = rs.getLong("report_uid"),
                                               eid = rs.getLong("eid"),
                                               pid = rs.getLong("pid"),
                                               kind = rs.getString("kind"),
                                               temporal = rs.getString("temporal"),
                                               location = rs.getString("location"),
                                               side = rs.getString("side"),
-                                              extent = rs.getString("extent")))
+                                              extent = rs.getString("extent"),
+                                              id = rs.getLong("id")))
                 }
+                it.commit()
             }
             return results
         }
-        fun delete(rowid: RowId): RowId {
-            DriverManager.getConnection(connectionString).use {
-                it.autoCommit = false
-                val stmt = it.prepareStatement("DELETE FROM stroke_features WHERE ROWID = ?", Statement.RETURN_GENERATED_KEYS)
-                stmt.setLong(1, rowid)
+        fun delete(id: Id): Id {
+            DatabaseFactory.getConnection().use {
+                val stmt = it.prepareStatement("DELETE FROM stroke_features WHERE id = ?")
+                stmt.setLong(1, id)
                 stmt.executeUpdate()
                 it.commit()
-                return stmt.generatedKeys.getLong(1)
+                return id
             }
         }
     }
@@ -297,10 +169,9 @@ data class StrokeFeature(override val rowid: RowId,
 
         return Validation(isValid = msg.isEmpty(), msg = msg)
     }
-    override fun insert(): RowId {
-        DriverManager.getConnection(connectionString).use {
-            it.autoCommit = false
-            val stmt = it.prepareStatement("INSERT INTO stroke_features (report_uid, eid, pid, kind, temporal, location, side, extent) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)
+    override fun insert(): Id {
+        DatabaseFactory.getConnection().use {
+            val stmt = it.prepareStatement("INSERT INTO stroke_features (report_uid, eid, pid, kind, temporal, location, side, extent) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id")
             stmt.setLong(1, report_uid)
             stmt.setLong(2, eid)
             stmt.setLong(3, pid)
@@ -309,64 +180,64 @@ data class StrokeFeature(override val rowid: RowId,
             stmt.setString(6, location)
             stmt.setString(7, side)
             stmt.setString(8, extent)
-            stmt.executeUpdate()
+            val rs = stmt.executeQuery()
             it.commit()
-            return stmt.generatedKeys.getLong(1)
+            rs.next()
+            return rs.getLong(1)
         }
     }
     override fun update(): Long {
-        DriverManager.getConnection(connectionString).use {
-            it.autoCommit = false
-            val stmt = it.prepareStatement("UPDATE stroke_features SET kind = ?, temporal = ?, location = ?, side = ?, extent = ? WHERE ROWID = ?", Statement.RETURN_GENERATED_KEYS)
+        DatabaseFactory.getConnection().use {
+            val stmt = it.prepareStatement("UPDATE stroke_features SET kind = ?, temporal = ?, location = ?, side = ?, extent = ? WHERE id = ?")
             stmt.setString(1, kind)
             stmt.setString(2, temporal)
             stmt.setString(3, location)
             stmt.setString(4, side)
             stmt.setString(5, extent)
-            stmt.setLong(6, rowid)
+            stmt.setLong(6, id)
             stmt.executeUpdate()
             it.commit()
-            return stmt.generatedKeys.getLong(1)
+            return id
         }
     }
 }
 
 @Location("/angio")
-data class AngioFeature(override val rowid: RowId,
-                        override val report_uid: ReportUID,
+data class AngioFeature(override val report_uid: ReportUID,
                         val eid: Long,
                         val pid: Long,
                         val vessel: String,
                         val side: String,
-                        val finding: String) : Feature, Json {
+                        val finding: String,
+                        override val id: Id) : Feature, Json {
 
     companion object {
         fun find(report_uid: ReportUID): List<AngioFeature> {
             val results = mutableListOf<AngioFeature>()
-            DriverManager.getConnection(connectionString).use {
-                val stmt = it.prepareStatement("SELECT ROWID,* FROM angio_features WHERE report_uid = ?")
+            DatabaseFactory.getConnection().use {
+                val stmt = it.prepareStatement("SELECT * FROM angio_features WHERE report_uid = ?")
                 stmt.setLong(1, report_uid)
                 val rs = stmt.executeQuery()
                 while (rs.next()) {
-                    results.add(AngioFeature(rowid = rs.getLong("rowid"),
-                                             report_uid = rs.getLong("report_uid"),
+                    results.add(AngioFeature(report_uid = rs.getLong("report_uid"),
                                              eid = rs.getLong("eid"),
                                              pid = rs.getLong("pid"),
                                              vessel = rs.getString("vessel"),
                                              side = rs.getString("side"),
-                                             finding = rs.getString("finding")))
+                                             finding = rs.getString("finding"),
+                                             id = rs.getLong("id")))
                 }
+                it.commit()
             }
             return results
         }
-        fun delete(rowid: RowId): RowId {
-            DriverManager.getConnection(connectionString).use {
-                it.autoCommit = false
-                val stmt = it.prepareStatement("DELETE FROM angio_features WHERE ROWID = ?", Statement.RETURN_GENERATED_KEYS)
-                stmt.setLong(1, rowid)
+        fun delete(id: Id): Id {
+            DatabaseFactory.getConnection().use {
+                val stmt = it.prepareStatement("DELETE FROM angio_features WHERE id = ?")
+                stmt.setLong(1, id)
                 stmt.executeUpdate()
                 it.commit()
-                return stmt.generatedKeys.getLong(1)
+                return id
             }
         }
     }
@@ -383,76 +254,75 @@ data class AngioFeature(override val rowid: RowId,
         }
         return Validation(isValid = msg.isEmpty(), msg = msg)
     }
-    override fun insert(): RowId {
-        DriverManager.getConnection(connectionString).use {
-            it.autoCommit = false
-            val stmt = it.prepareStatement("INSERT INTO angio_features (report_uid, eid, pid, vessel, side, finding) VALUES (?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)
+    override fun insert(): Id {
+        DatabaseFactory.getConnection().use {
+            val stmt = it.prepareStatement("INSERT INTO angio_features (report_uid, eid, pid, vessel, side, finding) VALUES (?, ?, ?, ?, ?, ?) RETURNING id")
             stmt.setLong(1, report_uid)
             stmt.setLong(2, eid)
             stmt.setLong(3, pid)
             stmt.setString(4, vessel)
             stmt.setString(5, side)
             stmt.setString(6, finding)
-            stmt.executeUpdate()
+            val rs = stmt.executeQuery()
             it.commit()
-            return stmt.generatedKeys.getLong(1)
+            rs.next()
+            return rs.getLong(1)
         }
     }
 
-    override fun update(): RowId {
-        DriverManager.getConnection(connectionString).use {
-            it.autoCommit = false
-            val stmt = it.prepareStatement("UPDATE angio_features SET vessel = ?, side = ?, finding = ? WHERE ROWID = ?", Statement.RETURN_GENERATED_KEYS)
+    override fun update(): Id {
+        DatabaseFactory.getConnection().use {
+            val stmt = it.prepareStatement("UPDATE angio_features SET vessel = ?, side = ?, finding = ? WHERE id = ?")
             stmt.setString(1, vessel)
             stmt.setString(2, side)
             stmt.setString(3, finding)
-            stmt.setLong(4, rowid)
+            stmt.setLong(4, id)
             stmt.executeUpdate()
             it.commit()
-            return stmt.generatedKeys.getLong(1)
+            return id
         }
     }
 }
 
 @Location("/degenerative")
-data class DegenerativeFeature(override val rowid: RowId,
-                               override val report_uid: ReportUID,
+data class DegenerativeFeature(override val report_uid: ReportUID,
                                val eid: Long,
                                val pid: Long,
                                val cortical_atrophy: String,
                                val cortical_atrophy_description: String,
                                val central_atrophy: String,
-                               val microangiopathy: String) : Feature, Json {
+                               val microangiopathy: String,
+                               override val id: Id) : Feature, Json {
 
     companion object {
         fun find(report_uid: ReportUID): List<DegenerativeFeature> {
             val results = mutableListOf<DegenerativeFeature>()
 
-            DriverManager.getConnection(connectionString).use {
-                val stmt = it.prepareStatement("SELECT ROWID,* FROM degenerative_features WHERE report_uid = ?")
+            DatabaseFactory.getConnection().use {
+                val stmt = it.prepareStatement("SELECT * FROM degenerative_features WHERE report_uid = ?")
                 stmt.setLong(1, report_uid)
                 val rs = stmt.executeQuery()
                 while (rs.next()) {
-                    results.add(DegenerativeFeature(rowid = rs.getLong("rowid"),
-                                                    report_uid = rs.getLong("report_uid"),
+                    results.add(DegenerativeFeature(report_uid = rs.getLong("report_uid"),
                                                     eid = rs.getLong("eid"),
                                                     pid = rs.getLong("pid"),
                                                     cortical_atrophy = rs.getString("cortical_atrophy"),
                                                     cortical_atrophy_description = rs.getString("cortical_atrophy_description"),
                                                     central_atrophy = rs.getString("central_atrophy"),
-                                                    microangiopathy = rs.getString("microangiopathy")))
+                                                    microangiopathy = rs.getString("microangiopathy"),
+                                                    id = rs.getLong("id")))
                 }
+                it.commit()
             }
             return results
         }
-        fun delete(rowid: RowId): RowId {
-            DriverManager.getConnection(connectionString).use {
-                it.autoCommit = false
-                val stmt = it.prepareStatement("DELETE FROM degenerative_features WHERE ROWID = ?")
-                stmt.setLong(1, rowid)
+        fun delete(id: Id): Id {
+            DatabaseFactory.getConnection().use {
+                val stmt = it.prepareStatement("DELETE FROM degenerative_features WHERE id = ?")
+                stmt.setLong(1, id)
                 stmt.executeUpdate()
                 it.commit()
-                return stmt.generatedKeys.getLong(1)
+                return id
             }
         }
     }
@@ -470,11 +340,9 @@ data class DegenerativeFeature(override val rowid: RowId,
 
         return Validation(isValid = msg.isEmpty(), msg = msg)
     }
-    override fun insert(): RowId {
-        print(this)
-        DriverManager.getConnection(connectionString).use {
-            it.autoCommit = false
-            val stmt = it.prepareStatement("INSERT INTO degenerative_features (report_uid, eid, pid, cortical_atrophy, cortical_atrophy_description, central_atrophy, microangiopathy) VALUES (?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)
+    override fun insert(): Id {
+        DatabaseFactory.getConnection().use {
+            val stmt = it.prepareStatement("INSERT INTO degenerative_features (report_uid, eid, pid, cortical_atrophy, cortical_atrophy_description, central_atrophy, microangiopathy) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id")
             stmt.setLong(1, report_uid)
             stmt.setLong(2, eid)
             stmt.setLong(3, pid)
@@ -482,24 +350,24 @@ data class DegenerativeFeature(override val rowid: RowId,
             stmt.setString(5, cortical_atrophy_description)
             stmt.setString(6, central_atrophy)
             stmt.setString(7, microangiopathy)
-            stmt.executeUpdate()
+            val rs = stmt.executeQuery()
             it.commit()
-            return stmt.generatedKeys.getLong(1)
+            rs.next()
+            return rs.getLong(1)
         }
     }
 
-    override fun update(): RowId {
-        DriverManager.getConnection(connectionString).use {
-            it.autoCommit = false
-            val stmt = it.prepareStatement("UPDATE degenerative_features SET cortical_atrophy = ?, cortical_atrophy_description = ?, central_atrophy = ?, microangiopathy =? WHERE ROWID = ?", Statement.RETURN_GENERATED_KEYS)
+    override fun update(): Id {
+        DatabaseFactory.getConnection().use {
+            val stmt = it.prepareStatement("UPDATE degenerative_features SET cortical_atrophy = ?, cortical_atrophy_description = ?, central_atrophy = ?, microangiopathy =? WHERE id = ?")
             stmt.setString(1, cortical_atrophy)
             stmt.setString(2, cortical_atrophy_description)
             stmt.setString(3, central_atrophy)
             stmt.setString(4, microangiopathy)
-            stmt.setLong(5, rowid)
+            stmt.setLong(5, id)
             stmt.executeUpdate()
             it.commit()
-            return stmt.generatedKeys.getLong(1)
+            return id
         }
     }
 }

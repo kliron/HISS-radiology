@@ -118,16 +118,16 @@ async function updateDegenerativeFeature(data) {
     return _put("/features/degenerative", data)
 }
 
-async function deleteStrokeFeature(rowid) {
-    return _delete(`/features/stroke/${rowid}`)
+async function deleteStrokeFeature(id) {
+    return _delete(`/features/stroke/${id}`)
 }
 
-async function deleteAngioFeature(rowid) {
-    return _delete(`/features/angio/${rowid}`)
+async function deleteAngioFeature(id) {
+    return _delete(`/features/angio/${id}`)
 }
 
-async function deleteDegenerativeFeature(rowid) {
-    return _delete(`/features/degenerative/${rowid}`)
+async function deleteDegenerativeFeature(id) {
+    return _delete(`/features/degenerative/${id}`)
 }
 
 export {

@@ -43,7 +43,7 @@ const Values = {
 
 class StrokeFeature {
     constructor(radiology) {
-        this.rowid = null
+        this.id = null
         this.pid = radiology.pid
         this.eid = radiology.eid
         this.report_uid = radiology.report_uid
@@ -79,7 +79,7 @@ class StrokeFeature {
 
 class AngioFeature {
     constructor(radiology) {
-        this.rowid = null
+        this.id = null
         this.pid = radiology.pid
         this.eid = radiology.eid
         this.report_uid = radiology.report_uid
@@ -107,7 +107,7 @@ class AngioFeature {
 
 class DegenerativeFeature {
     constructor(radiology) {
-        this.rowid = null
+        this.id = null
         this.pid = radiology.pid
         this.eid = radiology.eid
         this.report_uid = radiology.report_uid
@@ -256,8 +256,8 @@ class App extends React.Component {
     }
 
     selectRadiology = async (report_uid) => {
-        const selected = this.state.Radiology.filter(r => r.report_uid === report_uid)
-        if (selected.length === 0) {
+        const selected = this.state.Radiology.filter(r => r.report_uid === report_uid)[0]
+        if (selected === undefined) {
             alert(`Something went horribly wrong, no radiology record with id ${report_uid} exists!`)
             return
         }
@@ -265,7 +265,7 @@ class App extends React.Component {
         const feature = new StrokeFeature(selected)
 
         this.setState({
-            SelectedRadiology: selected[0],
+            SelectedRadiology: selected,
             SelectedFeatures: STROKE_FEATURES,
             Features: features,
             Feature: feature
@@ -330,12 +330,12 @@ class App extends React.Component {
     deleteFeature = async () => {
         if (!confirm('Are you sure?')) return
 
-        const rowid = this.state.Feature.rowid
-        if (rowid === null) return
+        const id = this.state.Feature.id
+        if (id === null) return
 
         switch (this.state.SelectedFeatures) {
             case STROKE_FEATURES: {
-                await deleteStrokeFeature(rowid)
+                await deleteStrokeFeature(id)
                 await this.setStrokeFeatures()
                 const sf = new StrokeFeature(this.state.SelectedRadiology)
                 this.setState({
@@ -344,7 +344,7 @@ class App extends React.Component {
                 break
             }
             case ANGIO_FEATURES: {
-                await deleteAngioFeature(rowid)
+                await deleteAngioFeature(id)
                 await this.setAngioFeatures()
                 const af = new AngioFeature(this.state.SelectedRadiology)
                 this.setState({
@@ -353,7 +353,7 @@ class App extends React.Component {
                 break
             }
             case DEGENERATIVE_FEATURES: {
-                await deleteDegenerativeFeature(rowid)
+                await deleteDegenerativeFeature(id)
                 await this.setDegenerativeFeatures()
                 const df = new DegenerativeFeature(this.state.SelectedRadiology)
                 this.setState({
@@ -368,23 +368,23 @@ class App extends React.Component {
 
     updateFeature = async () => {
         const data = this.state.Feature
-        const rowid = data.rowid
+        const id = data.id
         let saveFn
         switch (this.state.SelectedFeatures) {
             case STROKE_FEATURES: {
-                saveFn = rowid === null ? createStrokeFeature : updateStrokeFeature
+                saveFn = id === null ? createStrokeFeature : updateStrokeFeature
                 await saveFn(data)
                 await this.setStrokeFeatures()
                 break
             }
             case ANGIO_FEATURES: {
-                saveFn = rowid === null ? createAngioFeature : updateAngioFeature
+                saveFn = id === null ? createAngioFeature : updateAngioFeature
                 await saveFn(data)
                 await this.setAngioFeatures()
                 break
             }
             case DEGENERATIVE_FEATURES: {
-                saveFn = rowid === null ? createDegenerativeFeature : updateDegenerativeFeature
+                saveFn = id === null ? createDegenerativeFeature : updateDegenerativeFeature
                 await saveFn(data)
                 await this.setDegenerativeFeatures()
                 break
@@ -409,24 +409,24 @@ class App extends React.Component {
         switch (this.state.SelectedFeatures) {
             case STROKE_FEATURES: {
                 const sf = new StrokeFeature(this.state.SelectedRadiology)
-                const rowid = (await createStrokeFeature(sf)).data.rowid
-                console.log(rowid)
+                const id = (await createStrokeFeature(sf)).id
+                console.log(id)
                 await this.setStrokeFeatures()
-                this.selectFeature(this.state.Features.StrokeFeatures.filter(f => f.rowid === rowid)[0])
+                this.selectFeature(this.state.Features.StrokeFeatures.filter(f => f.id === id)[0])
                 break
             }
             case ANGIO_FEATURES: {
                 const af = new AngioFeature(this.state.SelectedRadiology)
-                const rowid = (await createAngioFeature(af)).data.rowid
+                const id = (await createAngioFeature(af)).id
                 await this.setAngioFeatures()
-                this.selectFeature(this.state.Features.AngioFeatures.filter(f => f.rowid === rowid)[0])
+                this.selectFeature(this.state.Features.AngioFeatures.filter(f => f.id === id)[0])
                 break
             }
             case DEGENERATIVE_FEATURES: {
                 const df = new DegenerativeFeature(this.state.SelectedRadiology)
-                const rowid = (await createDegenerativeFeature(df)).data.rowid
+                const id = (await createDegenerativeFeature(df)).id
                 await this.setDegenerativeFeatures()
-                this.selectFeature(this.state.Features.DegenerativeFeatures.filter(f => f.rowid === rowid)[0])
+                this.selectFeature(this.state.Features.DegenerativeFeatures.filter(f => f.id === id)[0])
                 break
             }
             default:

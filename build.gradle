@@ -2,8 +2,10 @@ buildscript {
     ext.kotlin_version = '1.2.50'
     ext.ktor_version = '0.9.1'
     ext.logback_version = '1.2.1'
-    ext.xerial_sqlite_version = '3.21.0.1'
     ext.jackson_version = '2.9.2'
+    ext.hikari_version = '3.1.0'
+    ext.psql_version = '42.2.2.jre7'
+    // ext.xerial_sqlite_version = '3.21.0.1'
 
     repositories {
         mavenCentral()
@@ -52,7 +54,9 @@ dependencies {
     compile "com.fasterxml.jackson.module:jackson-module-kotlin:$jackson_version"
     compile "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:$jackson_version"
     compile "ch.qos.logback:logback-classic:$logback_version"
-    compile "org.xerial:sqlite-jdbc:$xerial_sqlite_version"
+    compile "com.zaxxer:HikariCP:$hikari_version"
+    compile "org.postgresql:postgresql:$psql_version"
+    // compile "org.xerial:sqlite-jdbc:$xerial_sqlite_version"
     testCompile group: 'junit', name: 'junit', version: '4.12'
 }
 

@@ -8,7 +8,7 @@ import {
 } from "./App"
 
 const StrokeFeaturePropTypes = PropTypes.shape({
-    rowid: PropTypes.number,
+    id: PropTypes.number,
     report_uid: PropTypes.number,
     kind: PropTypes.string,
     temporal: PropTypes.string,
@@ -18,7 +18,7 @@ const StrokeFeaturePropTypes = PropTypes.shape({
 })
 
 const AngioFeaturePropTypes = PropTypes.shape({
-    rowid: PropTypes.number,
+    id: PropTypes.number,
     report_uid: PropTypes.number,
     vessel: PropTypes.string,
     side: PropTypes.string,
@@ -26,7 +26,7 @@ const AngioFeaturePropTypes = PropTypes.shape({
 })
 
 const DegenerativeFeaturePropTypes = PropTypes.shape({
-    rowid: PropTypes.number,
+    id: PropTypes.number,
     report_uid: PropTypes.number,
     cortical_atrophy: PropTypes.string,
     cortical_atrophy_description: PropTypes.string,
@@ -62,9 +62,9 @@ const ValuesPropTypes = PropTypes.shape({
 })
 
 const StrokeFeature = ({feature, selected, selectFeature}) => {
-    const {rowid, report_uid, kind, temporal, location, side, extent} = feature
+    const {id, report_uid, kind, temporal, location, side, extent} = feature
     return (
-        <div className={selected.rowid === feature.rowid ? "row feature selected" : "row feature"}
+        <div className={selected.id === feature.id ? "row feature selected" : "row feature"}
              onClick={selectFeature}>
             <div className='col-12'>
                 <ul>
@@ -81,14 +81,14 @@ const StrokeFeature = ({feature, selected, selectFeature}) => {
 
 StrokeFeature.propTypes = {
     selected: PropTypes.object,
-    feature: PropTypes.shape({rowid: PropTypes.number}),
+    feature: PropTypes.shape({id: PropTypes.number}),
     selectFeature: PropTypes.func
 }
 
 const AngioFeature = ({feature, selected, selectFeature}) => {
-    const {rowid, report_uid, vessel, side, finding} = feature
+    const {id, report_uid, vessel, side, finding} = feature
     return (
-        <div className={selected.rowid === feature.rowid ? "row feature selected" : "row feature"}
+        <div className={selected.id === feature.id ? "row feature selected" : "row feature"}
              onClick={selectFeature}>
             <div className='col-12'>
                 <ul>
@@ -102,15 +102,15 @@ const AngioFeature = ({feature, selected, selectFeature}) => {
 }
 
 AngioFeature.propTypes = {
-    feature: PropTypes.shape({rowid: PropTypes.number}),
-    selected: PropTypes.shape({rowid: PropTypes.number}),
+    feature: PropTypes.shape({id: PropTypes.number}),
+    selected: PropTypes.shape({id: PropTypes.number}),
     selectFeature: PropTypes.func
 }
 
 const DegenerativeFeature = ({feature, selected, selectFeature}) => {
     const {cortical_atrophy, cortical_atrophy_description, central_atrophy, microangiopathy} = feature
     return (
-        <div className={selected.rowid === feature.rowid ? "row feature selected" : "row feature"}
+        <div className={selected.id === feature.id ? "row feature selected" : "row feature"}
              onClick={selectFeature}>
             <div className='col-12'>
                 <ul>
@@ -125,13 +125,13 @@ const DegenerativeFeature = ({feature, selected, selectFeature}) => {
 }
 
 DegenerativeFeature.propTypes = {
-    feature: PropTypes.shape({rowid: PropTypes.number}),
-    selected: PropTypes.shape({rowid: PropTypes.number}),
+    feature: PropTypes.shape({id: PropTypes.number}),
+    selected: PropTypes.shape({id: PropTypes.number}),
     selectFeature: PropTypes.func
 }
 
 const StrokeFeatures = ({features, selected, selectFeature}) => features && features.map(f =>
-    <StrokeFeature key={f.rowid} feature={f}
+    <StrokeFeature key={f.id} feature={f}
                    selectFeature={selectFeature.bind(null, f)}
                    selected={selected}/>) || null
 
@@ -140,7 +140,7 @@ StrokeFeatures.propTypes = {
 }
 
 const AngioFeatures = ({features, selected, selectFeature}) => features && features.map(f =>
-    <AngioFeature key={f.rowid} feature={f}
+    <AngioFeature key={f.id} feature={f}
                   selectFeature={selectFeature.bind(null, f)}
                   selected={selected}/>) || null
 
@@ -150,7 +150,7 @@ AngioFeatures.propTypes = {
 
 const DegenerativeFeatures = ({features, selected, selectFeature}) => {
     return features && features.map(f =>
-        <DegenerativeFeature key={f.rowid} feature={f}
+        <DegenerativeFeature key={f.id} feature={f}
                              selectFeature={selectFeature.bind(null, f)}
                              selected={selected}/>) || null
 }
@@ -161,13 +161,13 @@ DegenerativeFeatures.propTypes = {
 
 const StrokeFeatureEditor = ({feature, onFeatureChange, values}) => {
     const vm = JSON.parse(JSON.stringify(feature))
-    const {rowid, report_uid, kind, temporal, location, side, extent} = vm
+    const {id, report_uid, kind, temporal, location, side, extent} = vm
     return (
         <div className='col-12'>
             <div className='row edit-feature'>
                 <div className='col-12'>
                     <ul>
-                        <li className='rowid'><span>rowid: </span>{rowid}</li>
+                        <li className='id'><span>id: </span>{id}</li>
                         <li className='report-uid'><span>report_uid: </span>{report_uid}</li>
                     </ul>
                 </div>
@@ -224,13 +224,13 @@ StrokeFeatureEditor.propTypes = {
 
 const AngioFeatureEditor = ({feature, onFeatureChange, values}) => {
     const vm = JSON.parse(JSON.stringify(feature))
-    const {rowid, report_uid, vessel, side, finding} = vm
+    const {id, report_uid, vessel, side, finding} = vm
     return (
         <div className='col-12'>
             <div className='row edit-feature'>
                 <div className='col-12'>
                     <ul>
-                        <li className='rowid'><span>rowid: </span>{rowid}</li>
+                        <li className='id'><span>id: </span>{id}</li>
                         <li className='radiology-id'><span>report_uid: </span>{report_uid}</li>
                     </ul>
                 </div>
@@ -271,13 +271,13 @@ AngioFeatureEditor.propTypes = {
 
 const DegenerativeFeatureEditor = ({feature, onFeatureChange, values}) => {
     const vm = JSON.parse(JSON.stringify(feature))
-    const {rowid, report_uid, cortical_atrophy, cortical_atrophy_description, central_atrophy, microangiopathy} = vm
+    const {id, report_uid, cortical_atrophy, cortical_atrophy_description, central_atrophy, microangiopathy} = vm
     return (
         <div className='col-12'>
             <div className='row edit-feature'>
                 <div className='col-12'>
                     <ul>
-                        <li><span className='rowid'>rowid: </span>{rowid}</li>
+                        <li><span className='id'>id: </span>{id}</li>
                         <li><span className='radiology-id'>report_uid: </span>{report_uid}</li>
                     </ul>
                 </div>
@@ -382,7 +382,7 @@ export default class RightPane extends React.Component {
                             </div>
                             <div className='col-6'>
                                 <button
-                                    className={this.props.Feature.rowid === null ? "btn btn-danger float-right disabled" : "btn btn-danger float-right"}
+                                    className={this.props.Feature.id === null ? "btn btn-danger float-right disabled" : "btn btn-danger float-right"}
                                     onClick={this.props.deleteFeature}>Delete
                                 </button>
                             </div>
@@ -426,7 +426,7 @@ RightPane.propTypes = {
     selectStroke: PropTypes.func,
     selectAngio: PropTypes.func,
     selectDegenerative: PropTypes.func,
-    Feature: PropTypes.shape({rowid: PropTypes.number}),
+    Feature: PropTypes.shape({id: PropTypes.number}),
     Features: PropTypes.array,
     Values: ValuesPropTypes,
     SelectedFeatures: PropTypes.string,
